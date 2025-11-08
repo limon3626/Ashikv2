@@ -1,0 +1,87 @@
+const models = [
+  'DreamShaper',
+  'MBBXL_Ultimate',
+  'Mysterious',
+  'Copax_TimeLessXL',
+  'Pixel_Art_XL',
+  'ProtoVision_XL',
+  'SDXL_Niji',
+  'CounterfeitXL',
+  'DucHaiten_AIart_SDXL'
+];
+
+module.exports = {
+  name: "imagine",
+  version: "2.0",
+  author: "✨ Rahad ✨",
+  role: 0,
+  cooldowns: 5,
+  description: "Create stunning AI images from your imagination.",
+  category: "🖼️ Image Generator",
+  guide: {
+    en:
+`╔═══✦🌌✦═══╗
+    𝐈𝐦𝐚𝐠𝐢𝐧𝐞 
+╚═══✦🌌✦═══╝
+
+⚡ Usage:
+» imagine <prompt> | <model number>
+
+🎨 Supported Models:
+${models.map((item, index) => `${index + 1}. ${item}`).join('\n')}
+
+━━━━━━━━━━━━━━
+🌟 Powered by Rahad 🌟`
+  },
+
+  onCall: async function ({ message, args, api, event }) {
+    try {
+      const text = args.join(" ");
+      if (!text) {
+        return message.reply("⚠️ Please provide a prompt.");
+      }
+
+      let prompt, model;
+      if (text.includes("|")) {
+        const [promptText, modelText] = text.split("|").map((str) => str.trim());
+        prompt = promptText;
+        model = modelText;
+
+        const modelNumber = parseInt(model);
+        if (!isNaN(modelNumber) && modelNumber >= 1 && modelNumber <= models.length) {
+          model = models[modelNumber - 1];
+        } else {
+          return message.reply("❌ Invalid model number. Supported models:\n" +
+            models.map((item, index) => `${index + 1}. ${item}`).join('\n')
+          );
+        }
+      } else {
+        prompt = text;
+        model = "DreamShaper";
+      }
+
+      api.setMessageReaction("⏳", event.messageID, () => {}, true);
+
+      const waitingMessage = await message.reply(
+`✨『 𝐈𝐦𝐚𝐠𝐢𝐧𝐞 』✨
+🖌️ Prompt: ${prompt}
+🎨 Model: ${model}
+⏳ Generating...`
+      );
+
+      const API = `https://www.api.vyturex.com/curios?prompt=${encodeURIComponent(prompt)}&modelType=${model}`;
+      const imageStream = await global.utils.getStreamFromURL(API);
+
+      await message.reply({
+        body: `✅ 𝐈𝐦𝐚𝐠𝐞 𝐂𝐫𝐞𝐚𝐭𝐞𝐝!\n🌟 Powered by Rahad 🌟`,
+        attachment: imageStream,
+      });
+
+      api.setMessageReaction("✅", event.messageID, () => {}, true);
+      await api.unsendMessage(waitingMessage.messageID);
+
+    } catch (error) {
+      message.reply("❌ Your prompt is blocked. Try again later with another prompt. [ SAFETY-FILTER ]");
+    }
+  }
+};
