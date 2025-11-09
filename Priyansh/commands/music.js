@@ -4,124 +4,115 @@ const ytSearch = require("yt-search");
 const axios = require("axios");
 const fetch = require("node-fetch");
 
-async function baseApiUrl() {
-  const base = await axios.get(
-    "https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json"
-  );
-  return base.data.api;
-}
-
-(async () => {
-  global.apis = {
-    diptoApi: await baseApiUrl()
-  };
-})();
+const SEARCH_API = "https://gemini-d0bh.onrender.com/search";
+const DOWNLOAD_API = "https://priyanshuapi.xyz/api/runner/yout-downloader/download";
+const API_KEY = "apim_bfVZ8_qKchCbGPLowwdzyJGxlqFBg9spe0Zu44GccDw";
 
 module.exports = {
   config: {
-    name: "audio",
-    version: "1.0.0",
+    name: "music",
+    version: "2.0.0",
     hasPermssion: 0,
-    credits: "HERO + ChatGPT",
-    description: "Search and download YouTube audios (with thumbnails)",
+    credits: "𝐊𝐀𝐒𝐇𝐈𝐅 𝐑𝐀𝐙𝐀",
+    description: "🎵 Search and download YouTube songs as MP3",
     commandCategory: "Media",
-    usages: "[song name] [optional result count]",
+    usages: "[song name]",
     cooldowns: 5
   },
 
-  run: async function({ api, event, args }) {
+  run: async function ({ api, event, args }) {
     if (!args.length) {
-      return api.sendMessage("🎵 দয়া করে গানের নাম লিখুন!", event.threadID, event.messageID);
+      return api.sendMessage("༻﹡﹡﹡﹡﹡﹡﹡༺\n\n**Please enter a song name to search! 🎶**\n\n༻﹡﹡﹡﹡﹡﹡﹡༺", event.threadID, event.messageID);
     }
 
-    // লাস্ট আর্গুমেন্ট সংখ্যা কিনা চেক করা
-    let resultCount = 6; // ডিফল্ট ৬
-    const lastArg = args[args.length - 1];
-    if (!isNaN(lastArg)) {
-      resultCount = Math.min(parseInt(lastArg), 20); // সর্বোচ্চ ২০টা লিমিট
-      args.pop();
-    }
-
-    const songName = args.join(" ");
+    const query = args.join(" ");
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
     try {
-      const searchResults = await ytSearch(songName);
-      if (!searchResults || !searchResults.videos.length) {
-        return api.sendMessage("❌ কোনো ফলাফল পাওয়া যায়নি!", event.threadID, event.messageID);
+      // Search via Gemini API (to match your working file)
+      const searchRes = await axios.get(`${SEARCH_API}?q=${encodeURIComponent(query)}`);
+      if (!searchRes.data.results || searchRes.data.results.length === 0) {
+        return api.sendMessage("⚝──⭒─⭑─⭒──⚝\n\n**No songs found for your search! ❌**\n\n⚝──⭒─⭑─⭒──⚝", event.threadID, event.messageID);
       }
 
-      const topResults = searchResults.videos.slice(0, resultCount);
-      let msg = `🎶 নিচের ${topResults.length}টা গান থেকে একটি সিলেক্ট করুন:\n\n`;
+      const results = searchRes.data.results.slice(0, 6);
+      let msg = `≿━━━━༺❀༻━━━━≾\n\n**🎧 Select a song number to download:**\n\n`;
 
-      const cacheDir = path.join(__dirname, "cache");
-      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
-
-      let attachments = [];
-      for (let i = 0; i < topResults.length; i++) {
-        const video = topResults[i];
-        msg += `${i + 1}. ${video.title} (${video.timestamp})\n`;
-
-        const thumbPath = path.join(cacheDir, `thumb_${event.senderID}_${i}.jpg`);
-        const response = await axios.get(video.thumbnail, { responseType: "arraybuffer" });
-        fs.writeFileSync(thumbPath, Buffer.from(response.data, "binary"));
-        attachments.push(fs.createReadStream(thumbPath));
+      const thumbs = [];
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        msg += `${i + 1}. ${r.title}\n`;
+        try {
+          const thumbPath = path.join(cacheDir, `thumb_${event.senderID}_${i}.jpg`);
+          const img = await axios.get(r.thumbnail, { responseType: "arraybuffer" });
+          fs.writeFileSync(thumbPath, Buffer.from(img.data, "binary"));
+          thumbs.push(thumbPath);
+        } catch { }
       }
 
-      api.sendMessage(
-        { body: msg, attachment: attachments },
-        event.threadID,
-        (err, info) => {
-          global.client.handleReply.push({
-            type: "audio_select",
-            name: this.config.name,
-            messageID: info.messageID,
-            author: event.senderID,
-            songs: topResults,
-            thumbs: attachments.map((_, i) =>
-              path.join(cacheDir, `thumb_${event.senderID}_${i}.jpg`)
-            )
-          });
-        },
-        event.messageID
-      );
+      msg += `\n≿━━━━༺❀༻━━━━≾\n\n**Reply with a number (1–${results.length}) to download.**`;
 
-    } catch (error) {
-      console.error(error);
-      return api.sendMessage("❌ গান সার্চ করতে সমস্যা হয়েছে।", event.threadID, event.messageID);
+      api.sendMessage({ body: msg, attachment: thumbs.map(f => fs.createReadStream(f)) }, event.threadID, (err, info) => {
+        global.client.handleReply.push({
+          type: "music_select",
+          name: this.config.name,
+          author: event.senderID,
+          messageID: info.messageID,
+          songs: results,
+          thumbs
+        });
+      }, event.messageID);
+
+    } catch (e) {
+      console.error(e);
+      return api.sendMessage("⚝──⭒─⭑─⭒──⚝\n\n**Error occurred while searching song! ❌**\n\n⚝──⭒─⭑─⭒──⚝", event.threadID, event.messageID);
     }
   },
 
-  handleReply: async function({ api, event, handleReply }) {
+  handleReply: async function ({ api, event, handleReply }) {
     if (event.senderID !== handleReply.author) return;
-
     const choice = parseInt(event.body);
     if (isNaN(choice) || choice < 1 || choice > handleReply.songs.length) {
-      return api.sendMessage("❌ সঠিক সংখ্যা লিখুন!", event.threadID, event.messageID);
+      return api.sendMessage("༻﹡﹡﹡﹡﹡﹡﹡༺\n\n**Please reply with a valid number! ⚠️**\n\n༻﹡﹡﹡﹡﹡﹡﹡༺", event.threadID, event.messageID);
     }
 
-    const song = handleReply.songs[choice - 1];
-    const downloadPath = path.join(__dirname, "cache", `${song.videoId}.mp3`);
+    const selected = handleReply.songs[choice - 1];
+    const songTitle = selected.title;
+    const videoUrl = selected.url;
+
+    const cacheDir = path.join(__dirname, "cache");
+    const filePath = path.join(cacheDir, `${Date.now()}.mp3`);
 
     try {
-      const apiUrl = `${global.apis.diptoApi}/ytDl3?link=${song.videoId}&format=mp3`;
-      const downloadResponse = await axios.get(apiUrl);
-      const downloadUrl = downloadResponse.data.downloadLink;
+      api.sendMessage(`≿━━━━༺❀༻━━━━≾\n\n**🎵 Downloading:** ${songTitle}\n\nPlease wait...`, event.threadID);
 
-      const audioBuffer = await (await fetch(downloadUrl)).buffer();
-      fs.writeFileSync(downloadPath, audioBuffer);
+      const dlRes = await axios.post(
+        DOWNLOAD_API,
+        { url: videoUrl, format: "audio" },
+        {
+          headers: {
+            Authorization: `Bearer ${API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          responseType: "arraybuffer"
+        }
+      );
+
+      fs.writeFileSync(filePath, Buffer.from(dlRes.data));
 
       await api.sendMessage({
-        attachment: fs.createReadStream(downloadPath),
-        body: `🎵 আপনার গান: ${song.title}`
+        body: `༻﹡﹡﹡﹡﹡﹡﹡༺\n\n**🎶 Song:** ${songTitle}\n\n**Uploaded by:** 𝐊𝐀𝐒𝐇𝐈𝐅 𝐑𝐀𝐙𝐀\n\n༻﹡﹡﹡﹡﹡﹡﹡༺`,
+        attachment: fs.createReadStream(filePath)
       }, event.threadID, () => {
-        if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
         handleReply.thumbs.forEach(t => fs.existsSync(t) && fs.unlinkSync(t));
         api.unsendMessage(handleReply.messageID);
-      }, event.messageID);
+      });
 
     } catch (error) {
       console.error(error);
-      return api.sendMessage("❌ গান ডাউনলোড করতে সমস্যা হয়েছে।", event.threadID, event.messageID);
+      return api.sendMessage("⚝──⭒─⭑─⭒──⚝\n\n**Failed to download this song! ❌**\n\n⚝──⭒─⭑─⭒──⚝", event.threadID, event.messageID);
     }
   }
 };
