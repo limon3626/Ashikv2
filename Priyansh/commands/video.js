@@ -4,29 +4,44 @@ const ytSearch = require("yt-search");
 const axios = require("axios");
 const fetch = require("node-fetch");
 
+async function baseApiUrl() {
+  const base = await axios.get(
+    "https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json"
+  );
+  return base.data.api;
+}
+
+(async () => {
+  global.apis = {
+    diptoApi: await baseApiUrl()
+  };
+})();
+
+const DOWNLOAD_API = "https://priyanshuapi.xyz/api/runner/yout-downloader/download";
+const API_KEY = "apim_bfVZ8_qKchCbGPLowwdzyJGxlqFBg9spe0Zu44GccDw";
+
 module.exports = {
   config: {
     name: "video",
-    version: "1.3.0",
+    version: "1.3.1",
     hasPermssion: 0,
     credits: "HERO + ChatGPT",
-    description: "Search and download YouTube videos (with thumbnails)",
+    description: "Search and download YouTube videos (always video format)",
     commandCategory: "Media",
-    usages: "[video name] [optional result count]",
+    usages: "[video name] (always downloads video)",
     cooldowns: 5
   },
 
-  run: async function({ api, event, args }) {
+  run: async function ({ api, event, args }) {
     if (!args.length) {
       return api.sendMessage("🎬 দয়া করে ভিডিও নাম লিখুন!", event.threadID, event.messageID);
     }
 
-    // লাস্ট আর্গুমেন্ট সংখ্যা কিনা চেক করা
-    let resultCount = 6; // ডিফল্ট ৬
+    let resultCount = 6;
     const lastArg = args[args.length - 1];
     if (!isNaN(lastArg)) {
-      resultCount = Math.min(parseInt(lastArg), 20); // সর্বোচ্চ ২০টা লিমিট
-      args.pop(); // সংখ্যা বাদ দিয়ে শুধু ভিডিও নাম রাখা
+      resultCount = Math.min(parseInt(lastArg), 20);
+      args.pop();
     }
 
     const videoName = args.join(" ");
@@ -38,7 +53,7 @@ module.exports = {
       }
 
       const topResults = searchResults.videos.slice(0, resultCount);
-      let msg = `🎶 নিচের ${topResults.length}টা ভিডিও থেকে একটি সিলেক্ট করুন:\n\n`;
+      let msg = `🎬 নিচের ${topResults.length}টা ভিডিও থেকে একটি সিলেক্ট করুন:\n\n`;
 
       const cacheDir = path.join(__dirname, "cache");
       if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
@@ -66,19 +81,19 @@ module.exports = {
             videos: topResults,
             thumbs: attachments.map((_, i) =>
               path.join(cacheDir, `thumb_${event.senderID}_${i}.jpg`)
-            )
+            ),
+            isVideo: true // সবসময় video ডাউনলোড হবে
           });
         },
         event.messageID
       );
-
     } catch (error) {
       console.error(error);
       return api.sendMessage("❌ ভিডিও সার্চ করতে সমস্যা হয়েছে।", event.threadID, event.messageID);
     }
   },
 
-  handleReply: async function({ api, event, handleReply }) {
+  handleReply: async function ({ api, event, handleReply }) {
     if (event.senderID !== handleReply.author) return;
 
     const choice = parseInt(event.body);
@@ -87,34 +102,44 @@ module.exports = {
     }
 
     const video = handleReply.videos[choice - 1];
-    const downloadPath = path.join(__dirname, "cache", `${video.videoId}.mp4`);
+    const cacheDir = path.join(__dirname, "cache");
+    const downloadPath = path.join(cacheDir, `${video.videoId}.mp4`);
+    const format = "video"; // সবসময় video
 
     try {
-      // ====== এইখানে নতুন API ব্যবহার ======
-      const downloadApiUrl = `https://apis-keith.vercel.app/download/video?url=${encodeURIComponent(video.url)}`;
-      const downloadResponse = await axios.get(downloadApiUrl);
+      const downloadResponse = await axios.post(
+        DOWNLOAD_API,
+        {
+          url: `https://www.youtube.com/watch?v=${video.videoId}`,
+          format: format
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          responseType: 'arraybuffer'
+        }
+      );
 
-      if (!downloadResponse.data.status || !downloadResponse.data.result) {
-        return api.sendMessage("❌ ভিডিও ডাউনলোড করতে সমস্যা হয়েছে।", event.threadID, event.messageID);
-      }
+      fs.writeFileSync(downloadPath, Buffer.from(downloadResponse.data));
 
-      const videoUrl = downloadResponse.data.result;
-      const videoBuffer = await (await fetch(videoUrl)).buffer();
-      fs.writeFileSync(downloadPath, videoBuffer);
-
-      await api.sendMessage({
-        attachment: fs.createReadStream(downloadPath),
-        body: `🎬 আপনার ভিডিও: ${video.title}`
-      }, event.threadID, () => {
-        // Send করার পর cleanup
-        if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
-        handleReply.thumbs.forEach(t => fs.existsSync(t) && fs.unlinkSync(t));
-        api.unsendMessage(handleReply.messageID);
-      }, event.messageID);
-
+      await api.sendMessage(
+        {
+          attachment: fs.createReadStream(downloadPath),
+          body: `🎬 আপনার ভিডিও: ${video.title}`
+        },
+        event.threadID,
+        () => {
+          if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
+          handleReply.thumbs.forEach(t => fs.existsSync(t) && fs.unlinkSync(t));
+          api.unsendMessage(handleReply.messageID);
+        },
+        event.messageID
+      );
     } catch (error) {
       console.error(error);
-      return api.sendMessage("❌ ভিডিও ডাউনলোড করতে সমস্যা হয়েছে।", event.threadID, event.messageID);
+      return api.sendMessage("❌ ডাউনলোড করতে সমস্যা হয়েছে।", event.threadID, event.messageID);
     }
   }
 };
