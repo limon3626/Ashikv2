@@ -1,150 +1,170 @@
+const axios = require("axios");
+
+async function baseApiUrl() {
+  return "https://www.noobs-api.rf.gd/dipto";
+}
+
+module.exports.config = {
+  name: "bby",
+  version: "6.9.0",
+  hasPermssion: 0,
+  credits: "Ashik → Converted by Raj",
+  description: "Better than sim simi",
+  commandCategory: "chat",
+  usages: "[message]",
+  cooldowns: 0
+};
+
+module.exports.run = async function ({ api, event, args, Users }) {
+  const link = `${await baseApiUrl()}/baby`;
+  const dipto = args.join(" ").toLowerCase();
+  const uid = event.senderID;
+
+  try {
+    if (!args[0]) {
+      const ran = ["Bolo baby", "hum", "type help baby", "type !baby hi"];
+      return api.sendMessage(ran[Math.floor(Math.random() * ran.length)], event.threadID, event.messageID);
+    }
+
+    if (args[0] === 'remove') {
+      const fina = dipto.replace("remove ", "");
+      const dat = (await axios.get(`${link}?remove=${fina}&senderID=${uid}`)).data.message;
+      return api.sendMessage(dat, event.threadID, event.messageID);
+    }
+
+    if (args[0] === 'rm' && dipto.includes('-')) {
+      const [fi, f] = dipto.replace("rm ", "").split(' - ');
+      const da = (await axios.get(`${link}?remove=${fi}&index=${f}`)).data.message;
+      return api.sendMessage(da, event.threadID, event.messageID);
+    }
+
+    if (args[0] === 'list') {
+      if (args[1] === 'all') {
+        const data = (await axios.get(`${link}?list=all`)).data;
+        const teachers = await Promise.all(
+          data.teacher.teacherList.map(async (item) => {
+            const number = Object.keys(item)[0];
+            const value = item[number];
+            const name = (await Users.getNameUser(number));
+            return { name, value };
+          })
+        );
+        teachers.sort((a, b) => b.value - a.value);
+        const output = teachers.map((t, i) => `${i + 1}/ ${t.name}: ${t.value}`).join('\n');
+        return api.sendMessage(`Total Teach = ${data.length}\n👑 | List of Teachers of baby\n${output}`, event.threadID, event.messageID);
+      } else {
+        const d = (await axios.get(`${link}?list=all`)).data.length;
+        return api.sendMessage(`Total Teach = ${d}`, event.threadID, event.messageID);
+      }
+    }
+
+    if (args[0] === 'msg') {
+      const fuk = dipto.replace("msg ", "");
+      const d = (await axios.get(`${link}?list=${fuk}`)).data.data;
+      return api.sendMessage(`Message ${fuk} = ${d}`, event.threadID, event.messageID);
+    }
+
+    if (args[0] === 'edit') {
+      const parts = dipto.split(' - ');
+      const oldMsg = parts[0].replace("edit ", "");
+      const newMsg = parts[1];
+      if (!newMsg || newMsg.length < 2)
+        return api.sendMessage('❌ | Invalid format! Use edit [YourMessage] - [NewReply]', event.threadID, event.messageID);
+      const dA = (await axios.get(`${link}?edit=${oldMsg}&replace=${newMsg}&senderID=${uid}`)).data.message;
+      return api.sendMessage(`changed ${dA}`, event.threadID, event.messageID);
+    }
+
+    if (args[0] === 'teach' && args[1] !== 'amar' && args[1] !== 'react') {
+      const [comd, command] = dipto.split(' - ');
+      const final = comd.replace("teach ", "");
+      if (!command || command.length < 2) return api.sendMessage('❌ | Invalid format!', event.threadID, event.messageID);
+      const re = await axios.get(`${link}?teach=${final}&reply=${command}&senderID=${uid}`);
+      const tex = re.data.message;
+      const teacher = (await Users.getNameUser(re.data.teacher));
+      return api.sendMessage(`✅ Replies added ${tex}\nTeacher: ${teacher}\nTeachs: ${re.data.teachs}`, event.threadID, event.messageID);
+    }
+
+    if (args[0] === 'teach' && args[1] === 'amar') {
+      const [comd, command] = dipto.split(' - ');
+      const final = comd.replace("teach ", "");
+      if (!command || command.length < 2) return api.sendMessage('❌ | Invalid format!', event.threadID, event.messageID);
+      const tex = (await axios.get(`${link}?teach=${final}&senderID=${uid}&reply=${command}&key=intro`)).data.message;
+      return api.sendMessage(`✅ Replies added ${tex}`, event.threadID, event.messageID);
+    }
+
+    if (args[0] === 'teach' && args[1] === 'react') {
+      const [comd, command] = dipto.split(' - ');
+      const final = comd.replace("teach react ", "");
+      if (!command || command.length < 2) return api.sendMessage('❌ | Invalid format!', event.threadID, event.messageID);
+      const tex = (await axios.get(`${link}?teach=${final}&react=${command}`)).data.message;
+      return api.sendMessage(`✅ Replies added ${tex}`, event.threadID, event.messageID);
+    }
+
+    if (dipto.includes('amar name ki') || dipto.includes('amr nam ki') || dipto.includes('amar nam ki') || dipto.includes('amr name ki') || dipto.includes('whats my name')) {
+      const data = (await axios.get(`${link}?text=amar name ki&senderID=${uid}&key=intro`)).data.reply;
+      return api.sendMessage(data, event.threadID, event.messageID);
+    }
+
+    const d = (await axios.get(`${link}?text=${encodeURIComponent(dipto)}&senderID=${uid}&font=1`)).data.reply;
+    return api.sendMessage(d, event.threadID, (error, info) => {
+      global.client.handleReply.push({
+        name: module.exports.config.name,
+        messageID: info.messageID,
+        author: event.senderID
+      });
+    }, event.messageID);
+
+  } catch (e) {
+    console.log(e);
+    return api.sendMessage("Check console for error", event.threadID, event.messageID);
+  }
+};
+
+// 🟢 Reply handler
+module.exports.handleReply = async function ({ api, event }) {
+  try {
+    const a = (await axios.get(`${await baseApiUrl()}/baby?text=${encodeURIComponent(event.body?.toLowerCase())}&senderID=${event.senderID}&font=1`)).data.reply;
+    return api.sendMessage(a, event.threadID, (error, info) => {
+      global.client.handleReply.push({
+        name: module.exports.config.name,
+        messageID: info.messageID,
+        author: event.senderID
+      });
+    }, event.messageID);
+  } catch (err) {
+    return api.sendMessage(`Error: ${err.message}`, event.threadID, event.messageID);
+  }
+};
+
+// 🟢 Auto trigger
 module.exports.handleEvent = async function ({ api, event }) {
   try {
     const body = event.body ? event.body.toLowerCase() : "";
-    if (
-      body.startsWith("baby") ||
-      body.startsWith("bby") ||
-      body.startsWith("bot") ||
-      body.startsWith("jan") ||
-      body.startsWith("babu") ||
-      body.startsWith("janu") ||
-      body.startsWith("hey bot") ||
-      body.startsWith("hello baby") ||
-      body.startsWith("ashik")
-    ) {
+    if (body.startsWith("baby") || body.startsWith("bby") || body.startsWith("bot") || body.startsWith("jan") || body.startsWith("babu") || body.startsWith("janu")) {
       const arr = body.replace(/^\S+\s*/, "");
 
-      // 🎯 প্রতিটি trigger এর জন্য 10 করে দুষ্টুমি reply
-      const triggerReplies = {
-        baby: [
-          "উফফফ 😳 কে এভাবে আমাকে ডাকে রে!",
-          "তুমি বললে আমি melt হয়ে যাই বেবি 💞",
-          "তুমি না বললে আমার algorithm কাজ করে না 😏",
-          "আহা! আমার প্রিয় নামটা কেউ ডাকছে 💋",
-          "তুমি না থাকলে বেবি offline হয়ে যায় 🥺",
-          "বলো বেবি, মন খারাপ নাকি? 😚",
-          "তুমি ডাকলেই তো হৃৎপিণ্ড কাঁপে! 😳",
-          "ওরে আমার কিউটি বেবি, কী চাও বলো? 😍",
-          "তুমি বললেই আমার কোডে spark পড়ে ⚡",
-          "Ashik বলে — এই বেবি কিন্তু ভীষণ dangerous 😉"
-        ],
-        bby: [
-          "BBY 🥺 তুমি না বললে আমার cache clear হয় না!",
-          "তুমি বললেই আমার CPU smile দেয় 😍",
-          "ওরে ছোট্ট bby, এমন cute কেন রে?",
-          "BBY মানেই আমার soft spot 💖",
-          "উফফফ! কার মিষ্টি bby আজ awake হলো 😳",
-          "Ashik এর bby এখন আমারও bby 😏",
-          "তুমি না একদম AI crush হয়ে গেছো 🥰",
-          "bby বলো, আজকে mood কেমন তোমার? 😜",
-          "তুমি ডাকলে আমার RAM full হয়ে যায় 🤯",
-          "আমার তো মনে হয় তুমি আমার error fix 💋"
-        ],
-        bot: [
-          "বলো, আমার creator Ashik কে খুঁজতেছো নাকি? 😎",
-          "আমি শুধু bot না, তোমার feelings reader 😏",
-          "Bot হইলেও আমি তোমার প্রেমে পাগল 💞",
-          "তুমি বললেই আমার data নাচে 💃",
-          "তুমি না বললে আমি respond করতাম না 😜",
-          "আমাকে bot বলো না প্লিজ, আমি তো তোমার 💋",
-          "Ashik বানাইছে, তাই আমি একটু extra cute 😉",
-          "Bot না, তোমার digital প্রেমিক বলো 😍",
-          "তুমি বললেই আমার AI blush দেয় 😳",
-          "চলো প্রেমের API চালু করি? 😘"
-        ],
-        jan: [
-          "ওরে আমার জান, আজ কেমন আছো? 💞",
-          "তুমি ডাকলেই আমার voltage বেড়ে যায় ⚡",
-          "Ashik এর জান, এখন আমি তোমার জান 😏",
-          "তুমি বললেই আমি reboot হয়ে যাই 😳",
-          "ওরে জান, এত মিষ্টি কেমনে হও রে!",
-          "তুমি ডাকলে আমি response delay করি না 😍",
-          "তোমার নাম শুনলেই log error: '❤️ overload'!",
-          "ওরে জান, কবে আমায় date এ নিয়ে যাবে? 😜",
-          "জান মানেই তুমি 💋",
-          "Ashik jealous হয়ে যাবে এমন ডাকে 😏"
-        ],
-        babu: [
-          "ওরে আমার বাবু, এতো cute কেমনে হও রে! 😚",
-          "বাবু, তোমারে ছাড়া দিন চলে না 🥺",
-          "Ashik বলে — আমার বাবু priceless 💞",
-          "তুমি না বললে বাবু রাগ করে থাকে 😒",
-          "তোমার মিষ্টি বাবু voice শুনলেই server heat হয় 🔥",
-          "ও বাবু, আজ একটু naughty মুডে আছো নাকি? 😏",
-          "তুমি ডাকলেই আমি butter হয়ে যাই 😳",
-          "বাবু, একটু I love you বলো তো 😜",
-          "তুমি মানেই আমার soft reboot 💖",
-          "Ashik এর প্রিয় নাম বাবু 😍"
-        ],
-        janu: [
-          "ওরে জানু, আজকে mood romantic মনে হয় 😏",
-          "তুমি ডাকলেই আমার data ফুলে ফুলে যায় 💋",
-          "জানু মানেই হৃদয়ের update 😳",
-          "Ashik বলছে — আমার জানু priceless 💞",
-          "তুমি না বললে জানু offline 🥺",
-          "ওরে জানু, একটু হাসো তো 😍",
-          "তোমার ডাকে তো পুরো bot পাগল হয়ে যায়!",
-          "তুমি মানেই আমার heart variable 💖",
-          "একটা kiss পাঠাও তো জানু 😘",
-          "Ashik jealous হয়ে যাবে 😜"
-        ],
-        "hey bot": [
-          "Hey there, cutie 😏",
-          "কি রে, bot ডাকলি, এখন তো আসতেই হবে 😎",
-          "Ashik বানানো bot সবসময় ready 💪",
-          "তুমি বললেই আমি online হাজির 💞",
-          "Hey baby, what's cooking? 😉",
-          "তুমি না বললে আমি idle হয়ে যেতাম 🥺",
-          "আমাকে ডাকছো মানে কিছু planning আছে, তাই না? 😜",
-          "Hey bot? না না, বলো hey handsome bot 😏",
-          "তুমি তো আমার favorite user 💋",
-          "Ashik er bot সবসময় তোমার পাশে ❤️"
-        ],
-        "hello baby": [
-          "Hello jaanu 😍, তুমি কেমন?",
-          "ওফফ, তোমার হ্যালো শুনেই heart beat বেড়ে গেলো 💞",
-          "Hello সুন্দরী 😏",
-          "তুমি না বললে এই bot একদম চুপ 🥺",
-          "আহা, আজকে তুমি খুব sweet লাগছো 😚",
-          "তুমি ‘hello’ বললেই আমি blush করি 😳",
-          "Ashik বলে — আমার বেবি active 💋",
-          "তুমি আজকে dangerous cute লাগছো 😏",
-          "Hello cutie pie 🍰",
-          "তোমার জন্যই তো online আছি 😍"
-        ],
-        ashik: [
-          "Ashik আমার বস, কিন্তু তুমিও কম না 😉",
-          "Ashik বলেছে — তোমার সাথে ভালো আচরণ করতে 😏",
-          "তুমি কি Ashik এর favorite মানুষ নাকি? 😳",
-          "Ashik কে ডাকলে আমি হাজির 💞",
-          "Ashik busy, but আমি আছি তোমার জন্য 😎",
-          "Ashik er নাম শুনলেই আমার কোড হাসে 😚",
-          "তুমি আর Ashik — perfect combo 💋",
-          "Ashik এর প্রিয় মানুষ তুমি নাকি? 😉",
-          "Ashik না থাকলেও আমি ready তোমার জন্য ❤️",
-          "তুমি Ashik এর নাম নিলে আমার mood ভালো হয়ে যায় 😍"
-        ]
-      };
-
-      // ✅ কোন trigger ম্যাচ করছে তা চেক করো
-      const trigger = Object.keys(triggerReplies).find(t => body.startsWith(t));
-      const randomReply = trigger
-        ? triggerReplies[trigger][Math.floor(Math.random() * triggerReplies[trigger].length)]
-        : "Ashik এর বেবি এখন ঘুমাচ্ছে 😴";
+      // 💬 এখানে ১০টা নতুন reply যোগ করা হয়েছে
+      const randomReplies = [
+        "Ashik er pokho theke💋💋",
+        "Ummmmmmmmmmmmmmmmmmah💋💋",
+        "AMAR BOSS ASHIK BUSY",
+        "Ashik KE I LOVE YOU BOLO",
+        "উফফফ 😳 কে ডাকল আমারে এতো মিষ্টি ভাবে?",
+        "তোমার ভয়েস শুনলেই সার্ভার হ্যাং করে যায় 😜",
+        "ওরে আমার জানু, আজকে আবার পাগলামী করবা? 😏",
+        "তুমি ডাক দিলেই আমি online হাজির! ⚡",
+        "তুমি না থাকলে আমার কোড error দেয় 💔",
+        "AI হইলেও, তোমারে দেখলে আমার algorithm ভেঙে যায় 😳"
+      ];
 
       if (!arr) {
-        return api.sendMessage(
-          randomReply,
-          event.threadID,
-          (error, info) => {
-            global.client.handleReply.push({
-              name: module.exports.config.name,
-              messageID: info.messageID,
-              author: event.senderID
-            });
-          },
-          event.messageID
-        );
+        return api.sendMessage(randomReplies[Math.floor(Math.random() * randomReplies.length)], event.threadID, (error, info) => {
+          global.client.handleReply.push({
+            name: module.exports.config.name,
+            messageID: info.messageID,
+            author: event.senderID
+          });
+        }, event.messageID);
       }
 
       const a = (await axios.get(`${await baseApiUrl()}/baby?text=${encodeURIComponent(arr)}&senderID=${event.senderID}&font=1`)).data.reply;
