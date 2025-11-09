@@ -21,7 +21,7 @@ const API_KEY = "apim_bfVZ8_qKchCbGPLowwdzyJGxlqFBg9spe0Zu44GccDw";
 
 module.exports = {
   config: {
-    name: "audio",
+    name: "sing",
     version: "1.0.1",
     hasPermssion: 0,
     credits: "HERO + ChatGPT",
