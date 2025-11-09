@@ -4,23 +4,10 @@ const ytSearch = require("yt-search");
 const axios = require("axios");
 const fetch = require("node-fetch");
 
-async function baseApiUrl() {
-  const base = await axios.get(
-    "https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json"
-  );
-  return base.data.api;
-}
-
-(async () => {
-  global.apis = {
-    diptoApi: await baseApiUrl()
-  };
-})();
-
 module.exports = {
   config: {
     name: "video",
-    version: "1.2.0",
+    version: "1.3.0",
     hasPermssion: 0,
     credits: "HERO + ChatGPT",
     description: "Search and download YouTube videos (with thumbnails)",
@@ -103,17 +90,23 @@ module.exports = {
     const downloadPath = path.join(__dirname, "cache", `${video.videoId}.mp4`);
 
     try {
-      const apiUrl = `${global.apis.diptoApi}/ytDl3?link=${video.videoId}&format=mp4`;
-      const downloadResponse = await axios.get(apiUrl);
-      const downloadUrl = downloadResponse.data.downloadLink;
+      // ====== এইখানে নতুন API ব্যবহার ======
+      const downloadApiUrl = `https://apis-keith.vercel.app/download/video?url=${encodeURIComponent(video.url)}`;
+      const downloadResponse = await axios.get(downloadApiUrl);
 
-      const videoBuffer = await (await fetch(downloadUrl)).buffer();
+      if (!downloadResponse.data.status || !downloadResponse.data.result) {
+        return api.sendMessage("❌ ভিডিও ডাউনলোড করতে সমস্যা হয়েছে।", event.threadID, event.messageID);
+      }
+
+      const videoUrl = downloadResponse.data.result;
+      const videoBuffer = await (await fetch(videoUrl)).buffer();
       fs.writeFileSync(downloadPath, videoBuffer);
 
       await api.sendMessage({
         attachment: fs.createReadStream(downloadPath),
         body: `🎬 আপনার ভিডিও: ${video.title}`
       }, event.threadID, () => {
+        // Send করার পর cleanup
         if (fs.existsSync(downloadPath)) fs.unlinkSync(downloadPath);
         handleReply.thumbs.forEach(t => fs.existsSync(t) && fs.unlinkSync(t));
         api.unsendMessage(handleReply.messageID);
