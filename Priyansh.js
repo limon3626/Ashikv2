@@ -9,7 +9,7 @@ const listPackage = JSON.parse(readFileSync('./package.json')).dependencies;
 const listbuiltinModules = require("module").builtinModules;
 
 global.client = new Object({
-    commands: new Map(),
+    command: new Map(),
     events: new Map(),
     cooldowns: new Map(),
     eventRegistered: new Array(),
@@ -144,12 +144,12 @@ function onBot({ models: botModel }) {
         global.config.version = '1.2.14'
         global.client.timeStart = new Date().getTime(),
             function () {
-                const listCommand = readdirSync(global.client.mainPath + '/Priyansh/commands').filter(command => command.endsWith('.js') && !command.includes('example') && !global.config.commandDisabled.includes(command));
+                const listCommand = readdirSync(global.client.mainPath + '/Priyansh/command').filter(command => command.endsWith('.js') && !command.includes('example') && !global.config.commandDisabled.includes(command));
                 for (const command of listCommand) {
                     try {
-                        var module = require(global.client.mainPath + '/Priyansh/commands/' + command);
+                        var module = require(global.client.mainPath + '/Priyansh/command/' + command);
                         if (!module.config || !module.run || !module.config.commandCategory) throw new Error(global.getText('priyansh', 'errorFormat'));
-                        if (global.client.commands.has(module.config.name || '')) throw new Error(global.getText('priyansh', 'nameExist'));
+                        if (global.client.command.has(module.config.name || '')) throw new Error(global.getText('priyansh', 'nameExist'));
                         if (!module.languages || typeof module.languages != 'object' || Object.keys(module.languages).length == 0) logger.loader(global.getText('priyansh', 'notFoundLanguage', module.config.name), 'warn');
                         if (module.config.dependencies && typeof module.config.dependencies == 'object') {
                             for (const reqDependencies in module.config.dependencies) {
@@ -202,7 +202,7 @@ function onBot({ models: botModel }) {
                             };
                         }
                         if (module.handleEvent) global.client.eventRegistered.push(module.config.name);
-                        global.client.commands.set(module.config.name, module);
+                        global.client.command.set(module.config.name, module);
                         logger.loader(global.getText('priyansh', 'successLoadModule', module.config.name));
                     } catch (error) {
                         logger.loader(global.getText('priyansh', 'failLoadModule', module.config.name, error), 'error');
@@ -271,7 +271,7 @@ function onBot({ models: botModel }) {
                     }
                 }
             }()
-        logger.loader(global.getText('priyansh', 'finishLoadModule', global.client.commands.size, global.client.events.size)) 
+        logger.loader(global.getText('priyansh', 'finishLoadModule', global.client.command.size, global.client.events.size)) 
         logger.loader(`Startup Time: ${((Date.now() - global.client.timeStart) / 1000).toFixed()}s`)   
         logger.loader('===== [ ' + (Date.now() - global.client.timeStart) + 'ms ] =====')
         writeFileSync(global.client['configPath'], JSON['stringify'](global.config, null, 4), 'utf8') 
