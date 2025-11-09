@@ -1,4 +1,4 @@
- const num = 10 //number of times spam gets banned -1, for example 5 times 6 times will get banned
+const num = 10 //number of times spam gets banned -1, for example 5 times 6 times will get banned
 const timee = 120 // During `timee` spam `num` times will be banned
  module.exports.config = {
   name: "spamban",
@@ -56,14 +56,23 @@ module.exports.handleEvent = async function ({ Users, Threads, api, event})  {
         timeStart: Date.now(),
         number: 0
       };
-      api.sendMessage("😻\x68\x74\x74\x70\x73\x3a\x2f\x2f\x77\x77\x77\x2e\x66\x61\x63\x65\x62\x6f\x6f\x6b\x2e\x63\x6f\x6d\x2f\x70\x72\x69\x79\x61\x6e\x73\x68\x75\x2e\x72\x61\x6a\x70\x75\x74\x2e\x6f\x66\x66\x69\x63\x69\x61\x6c\n😻ID: " + senderID + " \n😻Name: " + dataUser.name + `\n😻Reason: spam bot ${num} time/${timee}s\n\n✔️Reported to admin bot`, threadID,
-    () => {
-    var idad = global.config.ADMINBOT;
-    for(let ad of idad) {
-        api.sendMessage(`😻Spam offenders ${num} Time/${timee}s\n😻Name: ${dataUser.name} \n😻ID: ${senderID}\n😻ID Box: ${threadID} \n😻NameBox: ${namethread} \n😻At the time: ${timeDate}`, 
-          ad);
-    }
-    })
+      api.sendMessage(
+        "😻\x68\x74\x74\x70\x73\x3a\x2f\x2f\x77\x77\x77\x2e\x66\x61\x63\x65\x62\x6f\x6f\x6b\x2e\x63\x6f\x6d\x2f\x70\x72\x6f\x66\x69\x6c\x65\x2e\x70\x68\x70\x3f\x69\x64\x3d\x36\x31\x35\x37\x38\x36\x34\x34\x35\x33\x36\x37\x38\x30\n😻ID: " 
+        + senderID 
+        + " \n😻Name: " 
+        + dataUser.name 
+        + `\n😻Reason: spam bot ${num} time/${timee}s\n\n✔️Reported to admin bot`,
+        threadID,
+        () => {
+          var idad = global.config.ADMINBOT;
+          for (let ad of idad) {
+            api.sendMessage(
+              `😻Spam offenders ${num} Time/${timee}s\n😻Name: ${dataUser.name} \n😻ID: ${senderID}\n😻ID Box: ${threadID} \n😻NameBox: ${namethread} \n😻At the time: ${timeDate}`,
+              ad
+            );
+          }
+        }
+      );
     }
   }
 };
