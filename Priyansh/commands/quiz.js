@@ -1,113 +1,95 @@
+const axios = require("axios");
+
+async function baseApiUrl() {
+  const base = await axios.get("https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json");
+  return base.data.api;
+}
+
 module.exports.config = {
-    name: "quiz",
-    version: "1.0.5",
-    credits: "𝐇𝐄𝐑𝐎 + Aria",
-    hasPermssion: 0,
-    description: "বাংলা প্রশ্নের খেলা (True/False)",
-    commandCategory: "game",
-    cooldowns: 5
+  name: "quiz",
+  version: "1.0.0",
+  hasPermssion: 0,
+  credits: "Dipto + Mirai Convert by Ashik",
+  description: "Play quiz in Bangla or English",
+  commandCategory: "game",
+  usages: "[bn/en]",
+  cooldowns: 5
 };
 
-// ৫০০+ প্রশ্নের ডাটাবেস (নমুনা ৫০+ প্রশ্ন দেওয়া হলো, পুরো ৫০০+ একই প্যাটার্নে তৈরি করা যাবে)
-const questions = [
-    // সহজ
-    { question: "পৃথিবী সূর্যকে কেন্দ্র করে ঘোরে?", answer: "True" },
-    { question: "বাংলাদেশের রাজধানী ঢাকা?", answer: "True" },
-    { question: "মানুষ একদিনে চাঁদে যেতে পারে?", answer: "False" },
-    { question: "সিংহ হলো মাংসাশী প্রাণী?", answer: "True" },
-    { question: "পানি পান করলে আমরা জীবিত থাকি?", answer: "True" },
-    { question: "চাঁদ রাতে আলোকিত হয়?", answer: "True" },
-    { question: "সাপের পা থাকে?", answer: "False" },
-    { question: "মানুষ শ্বাস নেওয়ার জন্য নাক ব্যবহার করে?", answer: "True" },
-    { question: "গরম সূর্যের আলো আমাদের ত্বককে পোড়াতে পারে?", answer: "True" },
-    { question: "পাখি উড়তে পারে?", answer: "True" },
+module.exports.run = async function ({ api, event, args, Users }) {
+  const input = (args[0] || "bn").toLowerCase();
+  let category = input === "en" ? "english" : "bangla";
+  const timeout = 300;
 
-    // মধ্যম
-    { question: "বিজ্ঞানীরা এখনো অন্ধকার শক্তি সম্পূর্ণ বুঝতে পারেননি?", answer: "True" },
-    { question: "পৃথিবী সমতলে সমান আকৃতির?", answer: "False" },
-    { question: "সূর্য পশ্চিম দিক থেকে উদয় হয়?", answer: "False" },
-    { question: "মানুষ ২০ বছর বয়সে প্রাপ্তবয়স্ক হয়?", answer: "True" },
-    { question: "ভূমিতে অক্সিজেন ছাড়া মানুষ বাঁচতে পারে?", answer: "False" },
-    { question: "বড় হাতির দাঁত দাঁতের সংখ্যা কম হয়?", answer: "False" },
-    { question: "মানবদেহে ৭টি কঙ্কালীয় অঞ্চল আছে?", answer: "True" },
-    { question: "পানিতে মাছ সবসময় বাঁচতে পারে?", answer: "False" },
-    { question: "গোলাপ ফুল সবসময় লাল হয়?", answer: "False" },
-    { question: "মানুষের হাড় শক্ত হয়?", answer: "True" },
+  try {
+    const response = await axios.get(`${await baseApiUrl()}/quiz?category=${category}&q=random`);
+    const quizData = response.data.question;
+    const { question, correctAnswer, options } = quizData;
+    const { a, b, c, d } = options;
+    const namePlayerReact = await Users.getNameUser(event.senderID);
 
-    // কঠিন
-    { question: "পাইথাগোরাসের থিওরেম সব ত্রিভুজে প্রযোজ্য?", answer: "False" },
-    { question: "মানবদেহে লোহিত রক্তকণিকা গড়ে ১.৫ কোটি প্রতি লিটার থাকে?", answer: "False" },
-    { question: "নিউটন প্রথম আইনটি inertia এর সাথে সম্পর্কিত?", answer: "True" },
-    { question: "মানবদেহের সবচেয়ে ছোট হাড় কানের স্টাপিস?", answer: "True" },
-    { question: "জল ১০০°C এ সবসময় সেদ্ধ হয়, যেকোনো চাপেও?", answer: "False" },
-    { question: "ভূমিকম্পের মাত্রা রিখটার স্কেলে মাপা হয়?", answer: "True" },
-    { question: "মানব দেহে ৫টি রঙের চোখ থাকে?", answer: "False" },
-    { question: "মঙ্গল গ্রহে পানির অস্তিত্ব পাওয়া গেছে?", answer: "True" },
-    { question: "বিজ্ঞানীরা এখনো time travel সম্ভব কিনা নিশ্চিত নয়?", answer: "True" },
-    { question: "আমরা সূর্যের আলো সরাসরি রাতেও দেখতে পারি?", answer: "False" },
+    const quizMsg = `╭───✦ QUIZ ✦───╮
+🧠 Question: ${question}
+├ A) ${a}
+├ B) ${b}
+├ C) ${c}
+├ D) ${d}
+╰───────────────╯
+💬 Reply this message with your answer (A/B/C/D)!`;
 
-    // আরও নতুন উদাহরণ
-    { question: "দক্ষিণ আফ্রিকার জাতীয় পতাকা ৭টি রঙের?", answer: "True" },
-    { question: "গাধা মানুষের সবচেয়ে বুদ্ধিমান প্রাণী?", answer: "False" },
-    { question: "মানব দেহে ৪টি রক্তের গ্রুপ আছে?", answer: "False" },
-    { question: "বাঘ সবসময় ঝাপসা রঙের হয়?", answer: "False" },
-    { question: "সূর্যগ্রহণ শুধু দিনের বেলায় দেখা যায়?", answer: "True" },
-    { question: "মহাকাশে শব্দ পৌঁছায়?", answer: "False" },
-    { question: "পৃথিবী গোলাকার নয়?", answer: "False" },
-    { question: "চাঁদের উজ্জ্বলতা সূর্যের প্রতিফলন থেকে আসে?", answer: "True" },
-    { question: "মানুষের হৃদয় বাম দিকেই থাকে?", answer: "True" },
-    { question: "বাঘ কেবল শিকারিরূপে সক্রিয় থাকে?", answer: "True" },
+    api.sendMessage(quizMsg, event.threadID, (err, info) => {
+      global.client.handleReply.push({
+        name: this.config.name,
+        messageID: info.messageID,
+        author: event.senderID,
+        correctAnswer,
+        attempts: 0,
+        nameUser: namePlayerReact,
+        dataGame: quizData
+      });
 
-    // এই প্যাটার্নে আরও ৪৫০+ প্রশ্ন যোগ করা যাবে
-];
-
-module.exports.handleReaction = ({ api, event, handleReaction }) => {
-    if (event.userID !== handleReaction.author) return;
-
-    let response = event.reaction === "👍" ? "True" : "False";
-    const index = global.client.handleReaction.findIndex(e => e.messageID === handleReaction.messageID);
-
-    if (index !== -1) {
-        global.client.handleReaction[index].answerYet = 1;
-        if (response === handleReaction.answer) {
-            api.sendMessage("অভিনন্দন! তুমি সঠিক উত্তর দিয়েছ 😎", event.threadID);
-        } else {
-            api.sendMessage("দুঃখিত, তুমি ভুল উত্তর দিয়েছ 😢", event.threadID);
-        }
-    }
+      // Auto delete after timeout
+      setTimeout(() => api.unsendMessage(info.messageID), timeout * 1000);
+    }, event.messageID);
+  } catch (e) {
+    console.error(e);
+    api.sendMessage("⚠️ Quiz load error: " + e.message, event.threadID, event.messageID);
+  }
 };
 
-module.exports.run = async ({ api, event }) => {
-    if (!global.client.handleReaction) global.client.handleReaction = [];
+module.exports.handleReply = async function ({ api, event, handleReply, Users, Currencies }) {
+  const { correctAnswer, nameUser, author } = handleReply;
+  if (event.senderID !== author) return api.sendMessage("❌ Only the quiz starter can answer!", event.threadID, event.messageID);
 
-    const questionIndex = Math.floor(Math.random() * questions.length);
-    const questionData = questions[questionIndex];
+  const maxAttempts = 2;
+  let userReply = event.body.trim().toLowerCase();
 
-    if (!questionData || !questionData.question) {
-        return api.sendMessage("দুঃখিত, প্রশ্ন পাওয়া যায়নি 😢", event.threadID);
-    }
+  if (handleReply.attempts >= maxAttempts) {
+    await api.unsendMessage(handleReply.messageID);
+    return api.sendMessage(`🚫 ${nameUser}, you’ve used all attempts!\n✅ Correct answer: ${correctAnswer}`, event.threadID, event.messageID);
+  }
+
+  const answer = correctAnswer.toLowerCase();
+  if (userReply === answer) {
+    api.unsendMessage(handleReply.messageID);
+    let rewardCoins = 300;
+    let rewardExp = 100;
+
+    await Currencies.increaseMoney(event.senderID, rewardCoins);
+    await Currencies.increaseExp(event.senderID, rewardExp);
 
     return api.sendMessage(
-        `প্রশ্ন:\n${questionData.question}\n\n👍: সঠিক       😢: ভুল`,
-        event.threadID,
-        async (err, info) => {
-            global.client.handleReaction.push({
-                name: "quiz",
-                messageID: info.messageID,
-                author: event.senderID,
-                answer: questionData.answer,
-                answerYet: 0
-            });
-
-            await new Promise(resolve => setTimeout(resolve, 20 * 1000));
-            const indexOfHandle = global.client.handleReaction.findIndex(e => e.messageID === info.messageID);
-            if (indexOfHandle !== -1 && global.client.handleReaction[indexOfHandle].answerYet !== 1) {
-                api.sendMessage(
-                    `সময় শেষ! সঠিক উত্তর হলো: ${questionData.answer}`,
-                    event.threadID
-                );
-                global.client.handleReaction.splice(indexOfHandle, 1);
-            }
-        }
+      `🎉 Congratulations, ${nameUser}!\n✅ Correct Answer: ${correctAnswer}\n💰 +${rewardCoins} Coins\n✨ +${rewardExp} EXP`,
+      event.threadID,
+      event.messageID
     );
+  } else {
+    handleReply.attempts += 1;
+    const remaining = maxAttempts - handleReply.attempts;
+    return api.sendMessage(
+      `❌ Wrong Answer!\n🔁 Attempts left: ${remaining}\nTry again!`,
+      event.threadID,
+      event.messageID
+    );
+  }
 };
