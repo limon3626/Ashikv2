@@ -55,6 +55,7 @@ async function makeImage({ one, two }) {
 
   return pathImg;
 }
+
 async function circle(image) {
   const jimp = require("jimp");
   image = await jimp.read(image);
@@ -66,9 +67,29 @@ module.exports.run = async function ({ event, api, args }) {
   const fs = global.nodemodule["fs-extra"];
   const { threadID, messageID, senderID } = event;
   const mention = Object.keys(event.mentions);
-  if (!mention[0]) return api.sendMessage("Kono 1 jon ke mention to kor pagol 😅", threadID, messageID);
+
+  if (!mention[0]) 
+    return api.sendMessage("Kono 1 jon ke mention to kor pagol 😅", threadID, messageID);
+
   else {
-      const one = senderID, two = mention[0];
-      return makeImage({ one, two }).then(path => api.sendMessage({ body: "✧•❁𝐅𝐫𝐢𝐞𝐧𝐝𝐬𝐡𝐢𝐩❁•✧\n\n╔═══❖••° °••❖═══╗\n\n   𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥 𝐏𝐚𝐢𝐫𝐢𝐧𝐠\n\n╚═══❖••° °••❖═══╝\n\n   ✶⊶⊷⊷❍⊶⊷⊷✶\n\n       👑peye geli tor ❤\n\nTor bestu 🩷\n\n   ✶⊶⊷⊷❍⊶⊷⊷✶", attachment: fs.createReadStream(path) }, threadID, () => fs.unlinkSync(path), messageID));
+    const one = senderID, two = mention[0];
+
+    return makeImage({ one, two }).then(path =>
+      api.sendMessage({
+        body:
+"╔══════════════╗\n" +
+"     💗 𝑩𝒆𝒔𝒕𝒖 𝑴𝒂𝒕𝒄𝒉 💗\n" +
+"╚══════════════╝\n\n" +
+"✨ Pairing Complete!\n" +
+"💞 তোমার আর Mention করা Friend এর\n" +
+"Bestu Match তৈরি হয়ে গেছে!\n\n" +
+"🎀 নিচে তোমাদের Special Bestu Frame 💕",
+        attachment: fs.createReadStream(path)
+      },
+      threadID,
+      () => fs.unlinkSync(path),
+      messageID
+      )
+    );
   }
-    }
+        }
