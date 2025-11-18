@@ -1,117 +1,82 @@
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
+const Jimp = require("jimp");
+
 module.exports.config = {
     name: "joinNoti",
     eventType: ["log:subscribe"],
-    version: "1.0.1",
-    credits: "𝙋𝙧𝙞𝙮𝙖𝙣𝙨𝙝 𝙍𝙖𝙟𝙥𝙪𝙩",
-    description: "Notification of bots or people entering groups with random gif/photo/video",
-    dependencies: {
-        "fs-extra": "",
-        "path": "",
-        "pidusage": ""
+    version: "3.1",
+    credits: "Ashik Edit",
+    description: "Mirai: Custom Welcome Image with Random Background"
+};
+
+module.exports.run = async function({ api, event, Users }) {
+
+    try {
+        const threadID = event.threadID;
+
+        // Get joined user info
+        const addedUser = event.logMessageData.addedParticipants[0];
+        const userID = addedUser.userFbId;
+
+        const userName = await Users.getNameUser(userID);
+
+        // Background directory inside Mirai events folder
+        const bgDir = __dirname + "/welcome_bg";
+
+        // Scan background directory
+        const bgFiles = fs.readdirSync(bgDir).filter(file =>
+            file.endsWith(".jpg") || file.endsWith(".png")
+        );
+
+        if (!bgFiles.length) {
+            return api.sendMessage("⚠ No background images found in /events/welcome_bg/", threadID);
+        }
+
+        // Pick random background
+        const randomBG = bgFiles[Math.floor(Math.random() * bgFiles.length)];
+        const bgPath = path.join(bgDir, randomBG);
+
+        // Temporary paths
+        const avatarPath = __dirname + "/cache/avatar.png";
+        const finalImage = __dirname + "/cache/welcome.png";
+
+        // Fetch avatar
+        const avatarURL = `https://graph.facebook.com/${userID}/picture?width=512&height=512`;
+        const avt = (await axios.get(avatarURL, { responseType: "arraybuffer" })).data;
+        fs.writeFileSync(avatarPath, Buffer.from(avt, "utf-8"));
+
+        // Read with Jimp
+        const bgImg = await Jimp.read(bgPath);
+        const avatar = await Jimp.read(avatarPath);
+
+        // Circle avatar
+        avatar.circle();
+        avatar.resize(260, 260);
+
+        // Add avatar on bg (customize position here)
+        bgImg.composite(avatar, 380, 80);
+
+        // Add text on image
+        const font = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
+        bgImg.print(font, 50, 380, `Welcome ${userName}!`);
+        bgImg.print(font, 50, 430, `You're the new member of this group`);
+
+        await bgImg.writeAsync(finalImage);
+
+        // Send image to thread
+        api.sendMessage({
+            body: `✨ Welcome ${userName}!`,
+            attachment: fs.createReadStream(finalImage)
+        }, threadID);
+
+        // Auto clean
+        fs.unlinkSync(finalImage);
+        fs.unlinkSync(avatarPath);
+
+    } catch (e) {
+        console.log(e);
+        return api.sendMessage("❌ Error creating welcome image!", event.threadID);
     }
 };
- 
-module.exports.onLoad = function () {
-    const { existsSync, mkdirSync } = global.nodemodule["fs-extra"];
-    const { join } = global.nodemodule["path"];
- 
-    const path = join(__dirname, "cache", "joinvideo");
-    if (existsSync(path)) mkdirSync(path, { recursive: true }); 
- 
-    const path2 = join(__dirname, "cache", "joinvideo", "randomgif");
-    if (!existsSync(path2)) mkdirSync(path2, { recursive: true });
- 
-    return;
-}
- 
- 
-module.exports.run = async function({ api, event }) {
-    const { join } = global.nodemodule["path"];
-    const { threadID } = event;
-    if (event.logMessageData.addedParticipants.some(i => i.userFbId == api.getCurrentUserID())) {
-        api.changeNickname(`[ ${global.config.PREFIX} ] • ${(!global.config.BOTNAME) ? " " : global.config.BOTNAME}`, threadID, api.getCurrentUserID());
-        const fs = require("fs");
-        return api.sendMessage("", event.threadID, () => api.sendMessage({body: `🍒💙•••Ɓ❍ʈ Ƈøɳɳɛƈʈɛɗ•••💞🌿
-        
-🕊️🌸...Ɦɛɭɭ❍ Ɠɣus Ɱɣ Ɲɑɱɛ Is 🌿📢📱<><><><>✦𝘽𝙤𝙩✦<><><><>📱📢🍂
-
-
-
-
- ✨💞Ɱɣ Ꭾɽɛfɪᵡ ɪs / 
-
-
-\n\nƬɣƥɛ${global.config.PREFIX}ꞪɛɭᎮ Ƭ❍ søø Ɱɣ Ƈøɱɱɑɳɗ ɭɪsʈ...🤍💫\n
-\nƐxɑɱƥɭɛ :\n
-
-${global.config.PREFIX}Sɧɑɣɽɪ..💜(Ƭɛxʈ)\n${global.config.PREFIX} (Ƥɧøʈø)🌬️🌳🌊
-
-🦋🌸Ƭɣƥɛ${global.config.PREFIX}Ɦɛɭƥ2 (Ɑɭɭ Ƈøɱɱɑɳɗʂ)...☃️💌
-
-${global.config.PREFIX} ɪɳfø (ɑɗɱɪɳ Iɳføɽɱɑʈɪøɳ)👀✍️
-...🍫🥀Ɱɣ ❍wɳɛɽ ɪs Ɱɽ Ashik...🕊️☃️
-
-${global.config.PREFIX}🌺🍃Ƈɑɭɭɑɗ føɽ Ɑɳɣ ɪʂʂuɛ 
-<<<<<------------------------------>>>>>
-A̸N̸D̸ F̸O̸R̸ A̸N̸Y̸ R̸E̸P̸O̸R̸T̸ O̸R̸ C̸O̸N̸T̸A̸C̸T̸ B̸O̸T̸ D̸E̸V̸A̸L̸O̸P̸A̸R̸....💙🍫
-
-💝🥀𝐎𝐖𝐍𝐄𝐑:- ☞▀▄▀▄▀▄🄰🅂🄷🄸🄺🅄🅁 🅁🄰🄷🄼🄰🄽▀▄▀▄▀▄☜ 💫\n🖤𝚈𝚘𝚞 𝙲𝚊𝚗 𝙲𝚊𝚕𝚕 𝙷𝚒𝚖 𝘼𝙨𝙝𝙞𝙠🖤\n😳𝐇𝐢𝐬 𝐅𝐚𝐜𝐞𝐛𝐨𝐨𝐤 𝐢𝐝🤓:- ☞ https://www.facebook.com/profile.php?id=61578644536780
-👋For Any Kind Of Help Contact On Telegram  Username 👉 @Hero3626😇 
-
-
-✮☸✮
-✮┼💞┼✮
-☸🕊️━━•🌸•━━🕊️☸
-✮☸✮
-✮┼🍫┼✮
-☸🎀━━•🧸•━━🎀☸
-✮┼🦢┼✮
-✮☸✮
-☸🌈━━•🤍•━━🌈☸
-✮☸✮
-✮┼❄️┼✮
-
-┏━🕊️━━°❀•°:_________:°•❀°━━💞━┓🌸✦✧✧✧✧✰🍒𝘼𝙨𝙝𝙞𝙠🌿✰✧✧✧✧✦🌸  ┗━🕊️━━°❀•°:_____:°•❀°━━💞━┛
-`, attachment: fs.createReadStream(__dirname + "/cache/botjoin.mp4")} ,threadID));
-    }
-    else {
-        try {
-            const { createReadStream, existsSync, mkdirSync, readdirSync } = global.nodemodule["fs-extra"];
-            let { threadName, participantIDs } = await api.getThreadInfo(threadID);
- 
-            const threadData = global.data.threadData.get(parseInt(threadID)) || {};
-            const path = join(__dirname, "cache", "joinvideo");
-            const pathGif = join(path, `${threadID}.video`);
- 
-            var mentions = [], nameArray = [], memLength = [], i = 0;
-            
-            for (id in event.logMessageData.addedParticipants) {
-                const userName = event.logMessageData.addedParticipants[id].fullName;
-                nameArray.push(userName);
-                mentions.push({ tag: userName, id });
-                memLength.push(participantIDs.length - i++);
-            }
-            memLength.sort((a, b) => a - b);
-            
-            (typeof threadData.customJoin == "undefined") ? msg = "Hello Mr/Miss {name},\n─────────────────\n You're The {soThanhVien}Member ─────────────────\nOf {threadName} Group\n─────────────────\nPlease Enjoy Your Stay\n─────────────────\nAnd Make Lots Of Friends =)\n──────-°°__𝗧𝗿𝘂𝘀𝘁 𝗺e 🔐 °__!!>☁️✨❤️ My Owner  ▀▄▀▄▀▄🄰🅂🄷🄸🄺🅄🅁 🅁🄰🄷🄼🄰🄽▀▄▀▄▀▄ ❤️ Love you 😘 ummmma ❤️😍" : msg = threadData.customJoin;
-            msg = msg
-            .replace(/\{name}/g, nameArray.join(', '))
-            .replace(/\{type}/g, (memLength.length > 1) ?  'Friends' : 'Friend')
-            .replace(/\{soThanhVien}/g, memLength.join(', '))
-            .replace(/\{threadName}/g, threadName);
- 
-            if (existsSync(path)) mkdirSync(path, { recursive: true });
- 
-            const randomPath = readdirSync(join(__dirname, "cache", "joinGif", "randomgif"));
- 
-            if (existsSync(pathGif)) formPush = { body: msg, attachment: createReadStream(pathvideo), mentions }
-            else if (randomPath.length != 0) {
-                const pathRandom = join(__dirname, "cache", "joinGif", "randomgif", `${randomPath[Math.floor(Math.random() * randomPath.length)]}`);
-                formPush = { body: msg, attachment: createReadStream(pathRandom), mentions }
-            }
-            else formPush = { body: msg, mentions }
- 
-            return api.sendMessage(formPush, threadID);
-        } catch (e) { return console.log(e) };
-    }
-                 }
