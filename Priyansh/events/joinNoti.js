@@ -7,9 +7,9 @@ const Jimp = require("jimp");
 module.exports.config = {
     name: "joinNoti",
     eventType: ["log:subscribe"],
-    version: "2.2.0",
+    version: "2.3.0",
     credits: "Modified by ChatGPT for Ashik",
-    description: "Welcome system with colorful text and stylish design",
+    description: "Welcome system with colorful text, borders, box, and join date",
     dependencies: {
         "fs-extra": "",
         "path": "",
@@ -40,6 +40,17 @@ async function getAvatar(uid) {
 // Random color array for username
 const nameColors = ["#00ff00", "#ffa500", "#ff0000", "#ffff00", "#0000ff", "#800080", "#000000"];
 
+// Function to draw bordered text
+function drawTextWithBorder(ctx, text, x, y, font, fillColor, borderColor = "#000000") {
+    ctx.font = font;
+    ctx.textAlign = "center";
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = borderColor;
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = fillColor;
+    ctx.fillText(text, x, y);
+}
+
 module.exports.run = async function ({ api, event }) {
     const threadID = event.threadID;
     const added = event.logMessageData.addedParticipants;
@@ -47,7 +58,7 @@ module.exports.run = async function ({ api, event }) {
     try {
         const threadInfo = await api.getThreadInfo(threadID);
         const memberCount = threadInfo.participantIDs.length;
-        const threadName = threadInfo.threadName;
+        const threadName = threadInfo.threadName || "this group";
 
         for (const user of added) {
             const name = user.fullName;
@@ -76,6 +87,10 @@ module.exports.run = async function ({ api, event }) {
             // Draw background
             ctx.drawImage(bg, 0, 0, 1280, 720);
 
+            // Box overlay for text
+            ctx.fillStyle = "rgba(0,0,0,0.4)";
+            ctx.fillRect(140, 350, 1000, 300);
+
             // Circular avatar
             ctx.save();
             ctx.beginPath();
@@ -87,24 +102,24 @@ module.exports.run = async function ({ api, event }) {
 
             // --- Text Styling ---
 
-            // "Welcome to" → large, bold, green
-            ctx.fillStyle = "#00ff00";
-            ctx.font = "bold 60px Arial Black";
-            ctx.textAlign = "center";
-            ctx.fillText(`Welcome to`, 640, 500);
+            // "Welcome to" → green, bold, with border
+            drawTextWithBorder(ctx, "Welcome to", 640, 430, "bold 60px Arial Black", "#00ff00");
 
-            // Username → colorful
+            // Group name → bigger, bold, green with border
+            drawTextWithBorder(ctx, threadName, 640, 500, "bold 65px Arial Black", "#00ff00");
+
+            // Username → colorful with border
             const userColor = nameColors[Math.floor(Math.random() * nameColors.length)];
-            ctx.fillStyle = userColor;
-            ctx.font = "bold 70px Arial Black";
-            ctx.fillText(name, 640, 430);
+            drawTextWithBorder(ctx, name, 640, 580, "bold 70px Arial Black", userColor);
 
-            // "You are member #" → stylish
-            ctx.font = "italic 45px Arial";
-            ctx.fillStyle = "#ff69b4"; // pinkish
+            // "You are member #" → stylish, italic, shadow, border
             ctx.shadowColor = "rgba(0,0,0,0.7)";
             ctx.shadowBlur = 10;
-            ctx.fillText(`You are member #${memberCount}`, 640, 580);
+            drawTextWithBorder(ctx, `You are member #${memberCount}`, 640, 650, "italic 45px Arial", "#ff69b4");
+
+            // Join Date → below, smaller, white, border
+            const joinDate = new Date().toLocaleDateString("en-GB"); // DD/MM/YYYY
+            drawTextWithBorder(ctx, `Joined on: ${joinDate}`, 640, 700, "italic 35px Arial", "#ffffff");
 
             // Save final image
             const finalPath = path.join(__dirname, "cache", `welcome_${uid}.png`);
