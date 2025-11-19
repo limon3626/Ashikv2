@@ -7,9 +7,9 @@ const Jimp = require("jimp");
 module.exports.config = {
     name: "joinNoti",
     eventType: ["log:subscribe"],
-    version: "2.1.0",
+    version: "2.2.0",
     credits: "Modified by ChatGPT for Ashik",
-    description: "Welcome system with custom generated image using Jimp",
+    description: "Welcome system with colorful text and stylish design",
     dependencies: {
         "fs-extra": "",
         "path": "",
@@ -36,6 +36,9 @@ async function getAvatar(uid) {
         return await Jimp.read("https://i.imgur.com/8Km9tLL.png"); // default avatar
     }
 }
+
+// Random color array for username
+const nameColors = ["#00ff00", "#ffa500", "#ff0000", "#ffff00", "#0000ff", "#800080", "#000000"];
 
 module.exports.run = async function ({ api, event }) {
     const threadID = event.threadID;
@@ -82,18 +85,26 @@ module.exports.run = async function ({ api, event }) {
             ctx.drawImage(avatar, 490, 80, 300, 300);
             ctx.restore();
 
-            // Text Styling
-            ctx.fillStyle = "#ffffff";
-            ctx.textAlign = "center";
+            // --- Text Styling ---
 
-            ctx.font = "60px Arial Black";
+            // "Welcome to" → large, bold, green
+            ctx.fillStyle = "#00ff00";
+            ctx.font = "bold 60px Arial Black";
+            ctx.textAlign = "center";
+            ctx.fillText(`Welcome to`, 640, 500);
+
+            // Username → colorful
+            const userColor = nameColors[Math.floor(Math.random() * nameColors.length)];
+            ctx.fillStyle = userColor;
+            ctx.font = "bold 70px Arial Black";
             ctx.fillText(name, 640, 430);
 
-            ctx.font = "45px Arial";
-            ctx.fillText(`Welcome to ${threadName}`, 640, 500);
-
-            ctx.font = "40px Arial";
-            ctx.fillText(`You are member #${memberCount}`, 640, 560);
+            // "You are member #" → stylish
+            ctx.font = "italic 45px Arial";
+            ctx.fillStyle = "#ff69b4"; // pinkish
+            ctx.shadowColor = "rgba(0,0,0,0.7)";
+            ctx.shadowBlur = 10;
+            ctx.fillText(`You are member #${memberCount}`, 640, 580);
 
             // Save final image
             const finalPath = path.join(__dirname, "cache", `welcome_${uid}.png`);
