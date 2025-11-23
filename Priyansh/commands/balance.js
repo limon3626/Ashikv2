@@ -5,131 +5,139 @@ module.exports.config = {
   name: "balance",
   aliases: ["bal", "$", "cash"],
   version: "3.2",
-  author: "xnil6x (Mirai version by ChatGPT)",
+  author: "xnil6x (Fixed by ChatGPT)",
   countDown: 3,
   role: 0,
-  description: "💰 Premium Economy System with Auto Save",
+  description: "Economy balance system with auto-save",
   category: "economy",
   guide: {
-    en: "{pn} - Check your balance\n"
-       + "{pn} @user - Check others\n"
-       + "{pn} t @user amount - Transfer money\n"
-       + "{pn} [reply] - Check replied user's balance"
+    en: "{pn} → Check your balance\n"
+       + "{pn} @user → Check another user\n"
+       + "{pn} t @user amount → Transfer money\n"
+       + "{pn} (reply) → Check replied user's balance"
   }
 };
 
-// 📌 balance.json ফাইল লোকেশন
-const dataPath = path.join(__dirname, "../../data/balances.json");
+// JSON file
+const dataFolder = path.join(__dirname, "../../data");
+const dataFile = path.join(dataFolder, "balance.json");
 
-// 📌 balance.json না থাকলে অটো তৈরি হবে
-function loadBalances() {
-  if (!fs.existsSync(dataPath)) {
-    fs.writeFileSync(dataPath, JSON.stringify({}));
-  }
-  return JSON.parse(fs.readFileSync(dataPath));
+// Ensure folder + file exists
+function loadDB() {
+  if (!fs.existsSync(dataFolder)) fs.mkdirSync(dataFolder);
+  if (!fs.existsSync(dataFile)) fs.writeFileSync(dataFile, JSON.stringify({}));
+
+  return JSON.parse(fs.readFileSync(dataFile));
 }
 
-function saveBalances(data) {
-  fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+function saveDB(data) {
+  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
 }
 
-module.exports.onStart = async function ({ message, event, args }) {
-  const senderID = event.senderID;
+// Money Format
+function formatMoney(amount) {
+  amount = Number(amount);
+  if (isNaN(amount)) return "$0";
+
+  const units = [
+    { v: 1e15, s: "Q" },
+    { v: 1e12, s: "T" },
+    { v: 1e9, s: "B" },
+    { v: 1e6, s: "M" },
+    { v: 1e3, s: "k" }
+  ];
+
+  const u = units.find(u => amount >= u.v);
+  if (u) return `$${(amount / u.v).toFixed(1)}${u.s}`;
+
+  return `$${amount.toLocaleString()}`;
+}
+
+// Message Style
+function card(title, lines) {
+  return `✨ ${title} ✨\n` + lines.map(x => `➤ ${x}`).join("\n");
+}
+
+module.exports.run = async function ({ message, event, args }) {
+  const sender = event.senderID;
   const mentions = event.mentions || {};
   const replyUser = event.messageReply?.senderID;
 
-  let db = loadBalances();
+  let db = loadDB();
 
-  // যদি user ডাটাতে না থাকে → auto set = 0
-  if (!db[senderID]) db[senderID] = { money: 0 };
+  // Auto create if user not in DB
+  if (!db[sender]) db[sender] = { money: 0 };
 
-  const formatMoney = (amount) => {
-    if (isNaN(amount)) return "$0";
-    amount = Number(amount);
-    const scales = [
-      { value: 1e15, suffix: 'Q' },
-      { value: 1e12, suffix: 'T' },
-      { value: 1e9, suffix: 'B' },
-      { value: 1e6, suffix: 'M' },
-      { value: 1e3, suffix: 'k' }
-    ];
-    const scale = scales.find(s => amount >= s.value);
-    if (scale) return `$${(amount / scale.value).toFixed(1)}${scale.suffix}`;
-    return `$${amount.toLocaleString()}`;
-  };
-
-  const display = (title, lines) =>
-    `✨ ${title} ✨\n` + lines.map(l => `➤ ${l}`).join("\n");
-
-  // =======================
-  // 🔁 Money Transfer
-  // =======================
+  // ==========================
+  //        TRANSFER
+  // ==========================
   if (args[0]?.toLowerCase() === "t") {
     const targetID = Object.keys(mentions)[0] || replyUser;
     const amount = parseFloat(args[args.length - 1]);
 
     if (!targetID || isNaN(amount))
-      return message.reply(display("Invalid Usage", [
+      return message.reply(card("Invalid Usage", [
         "Use: balance t @user amount"
       ]));
 
     if (amount <= 0)
-      return message.reply(display("Error", ["Amount must be positive"]));
+      return message.reply(card("Error", ["Amount must be positive"]));
 
-    if (targetID === senderID)
-      return message.reply(display("Error", ["You can't send money to yourself"]));
+    if (targetID === sender)
+      return message.reply(card("Error", ["You cannot send to yourself"]));
 
     if (!db[targetID]) db[targetID] = { money: 0 };
 
-    if (db[senderID].money < amount)
-      return message.reply(display("Insufficient Balance", [
-        `You need more ${formatMoney(amount - db[senderID].money)}`
+    if (db[sender].money < amount)
+      return message.reply(card("Insufficient Funds", [
+        `You need ${formatMoney(amount - db[sender].money)} more.`
       ]));
 
-    db[senderID].money -= amount;
+    db[sender].money -= amount;
     db[targetID].money += amount;
 
-    saveBalances(db);
+    saveDB(db);
 
-    return message.reply(display("Transfer Complete", [
+    return message.reply(card("Transfer Complete", [
       `Sent: ${formatMoney(amount)}`,
-      `Your New Balance: ${formatMoney(db[senderID].money)}`
+      `Your New Balance: ${formatMoney(db[sender].money)}`
     ]));
   }
 
-  // =======================
-  // 🔁 Reply করে balance check
-  // =======================
+  // ==========================
+  //   Reply → Balance Check
+  // ==========================
   if (replyUser && !args[0]) {
     if (!db[replyUser]) db[replyUser] = { money: 0 };
-    saveBalances(db);
+    saveDB(db);
 
-    return message.reply(display("User Balance", [
+    return message.reply(card("User Balance", [
       `💰 Balance: ${formatMoney(db[replyUser].money)}`
     ]));
   }
 
-  // =======================
-  // 🔁 Mention User Balance
-  // =======================
+  // ==========================
+  //   Mention → Balance Check
+  // ==========================
   if (Object.keys(mentions).length > 0) {
-    let list = [];
+    let result = [];
 
     for (const uid in mentions) {
       if (!db[uid]) db[uid] = { money: 0 };
-      list.push(`${mentions[uid].replace("@", "")}: ${formatMoney(db[uid].money)}`);
+      result.push(`${mentions[uid].replace("@", "")}: ${formatMoney(db[uid].money)}`);
     }
 
-    saveBalances(db);
-    return message.reply(display("User Balances", list));
+    saveDB(db);
+
+    return message.reply(card("User Balances", result));
   }
 
-  // =======================
-  // 🔁 Your Own Balance
-  // =======================
-  saveBalances(db);
+  // ==========================
+  //     Default → Your Balance
+  // ==========================
+  saveDB(db);
 
-  return message.reply(display("Your Balance", [
-    `💵 ${formatMoney(db[senderID].money)}`
+  return message.reply(card("Your Balance", [
+    `💵 ${formatMoney(db[sender].money)}`
   ]));
 };
